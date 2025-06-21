@@ -261,8 +261,42 @@ class FridgeTracker {
         container.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
             checkbox.addEventListener('change', (e) => {
                 e.target.closest('.detected-item').classList.toggle('selected', e.target.checked);
+                this.updateSelectedCount();
             });
         });
+    }
+
+    // 選択数更新
+    updateSelectedCount() {
+        const checkedItems = document.querySelectorAll('#detected-items input[type="checkbox"]:checked');
+        const count = checkedItems.length;
+        const countElement = document.getElementById('selected-count');
+        const addButton = document.getElementById('add-items');
+        
+        // カウント表示更新
+        countElement.textContent = count;
+        
+        if (count > 0) {
+            countElement.classList.add('show');
+            countElement.classList.add('pulse');
+            addButton.disabled = false;
+            
+            // パルスアニメーション後にクラス除去
+            setTimeout(() => {
+                countElement.classList.remove('pulse');
+            }, 600);
+        } else {
+            countElement.classList.remove('show');
+            addButton.disabled = true;
+        }
+        
+        // ボタンテキスト更新
+        const buttonText = addButton.querySelector('.btn-text');
+        if (count > 0) {
+            buttonText.textContent = `選択した食材(${count}個)を冷蔵庫に追加`;
+        } else {
+            buttonText.textContent = '選択した食材を冷蔵庫に追加';
+        }
     }
 
     // 選択アイテム追加

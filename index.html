@@ -172,9 +172,10 @@
                         <!-- 検出された食材がここに表示されます -->
                     </div>
                     <div class="analysis-actions">
-                        <button id="add-items" class="btn btn-success" disabled>
-                            <i class="fas fa-plus"></i>
-                            選択した食材を追加
+                        <button id="add-items" class="btn btn-primary btn-large add-selected-btn" disabled>
+                            <i class="fas fa-shopping-cart"></i>
+                            <span class="btn-text">選択した食材を冷蔵庫に追加</span>
+                            <span class="btn-count" id="selected-count">0</span>
                         </button>
                         <button id="manual-add" class="btn btn-outline">
                             <i class="fas fa-edit"></i>
