@@ -15,20 +15,20 @@
         <div class="container">
             <h1 class="logo">
                 <i class="fas fa-snowflake"></i>
-                冷蔵庫トラッカー
+                <span class="logo-text">冷蔵庫トラッカー</span>
             </h1>
             <nav class="nav">
-                <button class="nav-btn active" data-tab="fridge">
+                <button class="nav-btn active" data-tab="fridge" title="冷蔵庫の中身を確認">
                     <i class="fas fa-snowflake"></i>
-                    冷蔵庫
+                    <span class="nav-text">冷蔵庫</span>
                 </button>
-                <button class="nav-btn" data-tab="receipt">
+                <button class="nav-btn" data-tab="receipt" title="レシートを撮影して食材追加">
                     <i class="fas fa-receipt"></i>
-                    レシート
+                    <span class="nav-text">レシート</span>
                 </button>
-                <button class="nav-btn" data-tab="history">
+                <button class="nav-btn" data-tab="history" title="使用履歴を確認">
                     <i class="fas fa-history"></i>
-                    履歴
+                    <span class="nav-text">履歴</span>
                 </button>
             </nav>
         </div>
@@ -134,7 +134,7 @@
                             <i class="fas fa-upload"></i>
                             ファイルを選択
                         </label>
-                        <input type="file" id="receipt-file" accept="image/*" capture="environment">
+                        <input type="file" id="receipt-file" accept="image/*" capture="environment" aria-label="レシート画像をファイルから選択">
                     </div>
                 </div>
 

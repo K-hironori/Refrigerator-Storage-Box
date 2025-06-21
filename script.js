@@ -131,13 +131,18 @@ class FridgeTracker {
     // カメラ開始
     async startCamera() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
+            // モバイルデバイス検出
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            const constraints = {
                 video: { 
                     facingMode: 'environment',
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    width: { ideal: isMobile ? 720 : 1280 },
+                    height: { ideal: isMobile ? 480 : 720 }
                 }
-            });
+            };
+            
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             
             const video = document.getElementById('camera-video');
             video.srcObject = stream;
