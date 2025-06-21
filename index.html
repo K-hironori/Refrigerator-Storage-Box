@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>冷蔵庫トラッカー - 食材管理アプリ</title>
+    <meta name="description" content="レシート写真から食材を記録し、冷蔵庫の中身を管理できるアプリです。">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">
+                <i class="fas fa-snowflake"></i>
+                冷蔵庫トラッカー
+            </h1>
+            <nav class="nav">
+                <button class="nav-btn active" data-tab="fridge">
+                    <i class="fas fa-snowflake"></i>
+                    冷蔵庫
+                </button>
+                <button class="nav-btn" data-tab="receipt">
+                    <i class="fas fa-receipt"></i>
+                    レシート
+                </button>
+                <button class="nav-btn" data-tab="history">
+                    <i class="fas fa-history"></i>
+                    履歴
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <!-- 冷蔵庫の中身タブ -->
+        <section id="fridge-tab" class="tab-content active">
+            <div class="container">
+                <div class="section-header">
+                    <h2>冷蔵庫の中身</h2>
+                    <div class="header-stats">
+                        <span class="stat">
+                            <i class="fas fa-box"></i>
+                            <span id="total-items">0</span>個
+                        </span>
+                        <span class="stat expiring">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span id="expiring-items">0</span>個期限近い
+                        </span>
+                    </div>
+                </div>
+
+                <!-- フィルター -->
+                <div class="filters">
+                    <select id="category-filter" class="filter-select">
+                        <option value="">すべてのカテゴリ</option>
+                        <option value="vegetables">野菜</option>
+                        <option value="fruits">果物</option>
+                        <option value="meat">肉類</option>
+                        <option value="fish">魚類</option>
+                        <option value="dairy">乳製品</option>
+                        <option value="grains">穀物</option>
+                        <option value="seasonings">調味料</option>
+                        <option value="others">その他</option>
+                    </select>
+                    <select id="status-filter" class="filter-select">
+                        <option value="">すべての状態</option>
+                        <option value="fresh">新鮮</option>
+                        <option value="expiring-soon">期限近い</option>
+                        <option value="expired">期限切れ</option>
+                    </select>
+                    <button id="sort-btn" class="sort-btn">
+                        <i class="fas fa-sort"></i>
+                        期限順
+                    </button>
+                </div>
+
+                <!-- 食材リスト -->
+                <div class="items-grid" id="items-grid">
+                    <!-- 食材アイテムがここに表示されます -->
+                    <div class="empty-state" id="empty-state">
+                        <i class="fas fa-snowflake"></i>
+                        <h3>冷蔵庫は空です</h3>
+                        <p>レシートを撮影して食材を追加しましょう</p>
+                        <button class="btn btn-primary" onclick="switchTab('receipt')">
+                            <i class="fas fa-camera"></i>
+                            レシートを撮影
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- レシート撮影タブ -->
+        <section id="receipt-tab" class="tab-content">
+            <div class="container">
+                <div class="section-header">
+                    <h2>レシート撮影</h2>
+                    <p>レシートを撮影して食材を自動で追加</p>
+                </div>
+
+                <!-- カメラセクション -->
+                <div class="camera-section">
+                    <div class="camera-container">
+                        <video id="camera-video" class="camera-video" autoplay playsinline></video>
+                        <canvas id="camera-canvas" class="camera-canvas"></canvas>
+                        <div class="camera-overlay">
+                            <div class="viewfinder"></div>
+                            <p class="camera-guide">レシートを枠内に収めてください</p>
+                        </div>
+                    </div>
+                    
+                    <div class="camera-controls">
+                        <button id="start-camera" class="btn btn-primary">
+                            <i class="fas fa-camera"></i>
+                            カメラを開始
+                        </button>
+                        <button id="capture-photo" class="btn btn-success" disabled>
+                            <i class="fas fa-camera-retro"></i>
+                            撮影
+                        </button>
+                        <button id="stop-camera" class="btn btn-secondary" disabled>
+                            <i class="fas fa-stop"></i>
+                            停止
+                        </button>
+                    </div>
+
+                    <!-- ファイルアップロード -->
+                    <div class="upload-section">
+                        <p class="section-divider">または</p>
+                        <label for="receipt-file" class="upload-btn">
+                            <i class="fas fa-upload"></i>
+                            ファイルを選択
+                        </label>
+                        <input type="file" id="receipt-file" accept="image/*" capture="environment">
+                    </div>
+                </div>
+
+                <!-- 撮影結果 -->
+                <div id="captured-image-section" class="captured-section">
+                    <h3>撮影したレシート</h3>
+                    <div class="image-preview">
+                        <img id="captured-image" alt="撮影したレシート">
+                        <div class="image-actions">
+                            <button id="analyze-receipt" class="btn btn-primary">
+                                <i class="fas fa-search"></i>
+                                レシートを解析
+                            </button>
+                            <button id="retake-photo" class="btn btn-secondary">
+                                <i class="fas fa-redo"></i>
+                                撮り直し
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 解析結果 -->
+                <div id="analysis-results" class="analysis-section">
+                    <h3>解析結果</h3>
+                    <div class="loading" id="analysis-loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>レシートを解析中...</p>
+                    </div>
+                    <div id="detected-items" class="detected-items">
+                        <!-- 検出された食材がここに表示されます -->
+                    </div>
+                    <div class="analysis-actions">
+                        <button id="add-items" class="btn btn-success" disabled>
+                            <i class="fas fa-plus"></i>
+                            選択した食材を追加
+                        </button>
+                        <button id="manual-add" class="btn btn-outline">
+                            <i class="fas fa-edit"></i>
+                            手動で追加
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 履歴タブ -->
+        <section id="history-tab" class="tab-content">
+            <div class="container">
+                <div class="section-header">
+                    <h2>使用履歴</h2>
+                    <p>食材の使用・廃棄の記録</p>
+                </div>
+
+                <!-- 履歴フィルター -->
+                <div class="history-filters">
+                    <select id="history-filter" class="filter-select">
+                        <option value="">すべての履歴</option>
+                        <option value="used">使用</option>
+                        <option value="discarded">廃棄</option>
+                        <option value="added">追加</option>
+                    </select>
+                    <select id="date-filter" class="filter-select">
+                        <option value="7">過去7日間</option>
+                        <option value="30">過去30日間</option>
+                        <option value="90">過去90日間</option>
+                        <option value="all">すべて</option>
+                    </select>
+                </div>
+
+                <!-- 履歴リスト -->
+                <div class="history-list" id="history-list">
+                    <!-- 履歴アイテムがここに表示されます -->
+                    <div class="empty-history" id="empty-history">
+                        <i class="fas fa-history"></i>
+                        <h3>履歴がありません</h3>
+                        <p>食材を使用・廃棄すると履歴が表示されます</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 食材詳細モーダル -->
+    <div id="item-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">食材詳細</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="item-details">
+                    <div class="item-image">
+                        <i class="fas fa-apple-alt" id="modal-icon"></i>
+                    </div>
+                    <div class="item-info">
+                        <h4 id="modal-item-name">商品名</h4>
+                        <p class="item-category" id="modal-category">カテゴリ</p>
+                        <div class="item-dates">
+                            <div class="date-info">
+                                <span class="label">購入日:</span>
+                                <span id="modal-purchase-date">2024-01-01</span>
+                            </div>
+                            <div class="date-info">
+                                <span class="label">賞味期限:</span>
+                                <span id="modal-expiry-date">2024-01-10</span>
+                            </div>
+                            <div class="date-info">
+                                <span class="label">残り日数:</span>
+                                <span id="modal-days-left" class="days-left">9日</span>
+                            </div>
+                        </div>
+                        <div class="item-quantity">
+                            <span class="label">数量:</span>
+                            <div class="quantity-controls">
+                                <button class="quantity-btn" onclick="changeQuantity(-1)">-</button>
+                                <span id="modal-quantity">1</span>
+                                <button class="quantity-btn" onclick="changeQuantity(1)">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success" onclick="useItem()">
+                    <i class="fas fa-utensils"></i>
+                    使用
+                </button>
+                <button class="btn btn-warning" onclick="discardItem()">
+                    <i class="fas fa-trash"></i>
+                    廃棄
+                </button>
+                <button class="btn btn-outline" onclick="editItem()">
+                    <i class="fas fa-edit"></i>
+                    編集
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 手動追加モーダル -->
+    <div id="manual-add-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>食材を手動で追加</h3>
+                <button class="modal-close" onclick="closeManualAddModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="manual-add-form">
+                    <div class="form-group">
+                        <label for="item-name">商品名 <span class="required">*</span></label>
+                        <input type="text" id="item-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="item-category">カテゴリ</label>
+                        <select id="item-category">
+                            <option value="vegetables">野菜</option>
+                            <option value="fruits">果物</option>
+                            <option value="meat">肉類</option>
+                            <option value="fish">魚類</option>
+                            <option value="dairy">乳製品</option>
+                            <option value="grains">穀物</option>
+                            <option value="seasonings">調味料</option>
+                            <option value="others">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="purchase-date">購入日</label>
+                            <input type="date" id="purchase-date">
+                        </div>
+                        <div class="form-group">
+                            <label for="expiry-date">賞味期限</label>
+                            <input type="date" id="expiry-date">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="item-quantity">数量</label>
+                        <input type="number" id="item-quantity" value="1" min="1">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveManualItem()">
+                    <i class="fas fa-save"></i>
+                    保存
+                </button>
+                <button class="btn btn-secondary" onclick="closeManualAddModal()">
+                    キャンセル
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知 -->
+    <div id="notification" class="notification">
+        <div class="notification-content">
+            <i class="notification-icon"></i>
+            <span class="notification-message"></span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
