@@ -8,6 +8,11 @@ class FridgeTracker {
         this.currentStream = null;
         this.currentModal = null;
         this.currentItemId = null;
+        this.currentMode = 'photo'; // 'photo' または 'video'
+        this.mediaRecorder = null;
+        this.recordedChunks = [];
+        this.recordingStartTime = null;
+        this.recordingTimer = null;
         
         this.init();
     }
@@ -74,9 +79,17 @@ class FridgeTracker {
             });
         });
 
+        // モード切り替え
+        document.querySelectorAll('.mode-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => this.switchMode(e.target.dataset.mode));
+        });
+
         // カメラ関連
         document.getElementById('start-camera')?.addEventListener('click', () => this.startCamera());
         document.getElementById('capture-photo')?.addEventListener('click', () => this.capturePhoto());
+        document.getElementById('start-recording')?.addEventListener('click', () => this.startRecording());
+        document.getElementById('stop-recording')?.addEventListener('click', () => this.stopRecording());
+        document.getElementById('capture-frame')?.addEventListener('click', () => this.captureFrameFromVideo());
         document.getElementById('stop-camera')?.addEventListener('click', () => this.stopCamera());
         document.getElementById('receipt-file')?.addEventListener('change', (e) => this.handleFileUpload(e));
         document.getElementById('analyze-receipt')?.addEventListener('click', () => this.analyzeReceipt());
@@ -106,6 +119,42 @@ class FridgeTracker {
                 this.closeModal();
             }
         });
+    }
+
+    // モード切り替え
+    switchMode(mode) {
+        this.currentMode = mode;
+        
+        // タブの表示切り替え
+        document.querySelectorAll('.mode-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+        
+        // コントロールの表示切り替え
+        const photoControls = document.getElementById('photo-controls');
+        const videoControls = document.getElementById('video-controls');
+        
+        if (mode === 'photo') {
+            photoControls.style.display = 'flex';
+            videoControls.style.display = 'none';
+        } else {
+            photoControls.style.display = 'none';
+            videoControls.style.display = 'flex';
+        }
+        
+        // カメラガイドテキスト更新
+        const guideText = document.querySelector('.camera-guide');
+        if (guideText) {
+            guideText.textContent = mode === 'photo' 
+                ? 'レシートを枠内に収めてください' 
+                : 'レシートを映して録画してください';
+        }
+        
+        // 録画中でない場合のみボタンを更新
+        if (!this.mediaRecorder || this.mediaRecorder.state !== 'recording') {
+            this.updateCameraButtons();
+        }
     }
 
     // タブ切り替え
@@ -148,9 +197,7 @@ class FridgeTracker {
             video.srcObject = stream;
             this.currentStream = stream;
             
-            document.getElementById('start-camera').disabled = true;
-            document.getElementById('capture-photo').disabled = false;
-            document.getElementById('stop-camera').disabled = false;
+            this.updateCameraButtons();
             
             this.showNotification('カメラを開始しました', 'success');
         } catch (error) {
@@ -181,20 +228,187 @@ class FridgeTracker {
             this.currentStream = null;
         }
         
-        document.getElementById('start-camera').disabled = false;
-        document.getElementById('capture-photo').disabled = true;
-        document.getElementById('stop-camera').disabled = true;
+        this.updateCameraButtons();
+    }
+
+    // カメラボタン状態更新
+    updateCameraButtons() {
+        const hasStream = !!this.currentStream;
+        const isRecording = this.mediaRecorder && this.mediaRecorder.state === 'recording';
+        
+        // 共通ボタン
+        document.getElementById('start-camera').disabled = hasStream;
+        document.getElementById('stop-camera').disabled = !hasStream;
+        
+        // 写真モードボタン
+        document.getElementById('capture-photo').disabled = !hasStream || isRecording;
+        
+        // 動画モードボタン
+        document.getElementById('start-recording').disabled = !hasStream || isRecording;
+        document.getElementById('stop-recording').disabled = !isRecording;
+        document.getElementById('capture-frame').disabled = !isRecording;
+        
+        // 録画中ボタンの表示制御
+        if (isRecording) {
+            document.getElementById('start-recording').style.display = 'none';
+            document.getElementById('stop-recording').style.display = 'inline-flex';
+            document.getElementById('capture-frame').style.display = 'inline-flex';
+        } else {
+            document.getElementById('start-recording').style.display = 'inline-flex';
+            document.getElementById('stop-recording').style.display = 'none';
+            document.getElementById('capture-frame').style.display = 'none';
+        }
+    }
+
+    // 動画録画開始
+    async startRecording() {
+        if (!this.currentStream) {
+            this.showNotification('先にカメラを開始してください', 'error');
+            return;
+        }
+
+        try {
+            this.recordedChunks = [];
+            this.mediaRecorder = new MediaRecorder(this.currentStream, {
+                mimeType: 'video/webm;codecs=vp9'
+            });
+
+            this.mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    this.recordedChunks.push(event.data);
+                }
+            };
+
+            this.mediaRecorder.onstop = () => {
+                const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                this.showRecordedVideo(url);
+            };
+
+            this.mediaRecorder.start();
+            this.recordingStartTime = Date.now();
+            this.startRecordingTimer();
+            
+            // UI更新
+            document.getElementById('recording-indicator').style.display = 'flex';
+            this.updateCameraButtons();
+            
+            this.showNotification('録画を開始しました', 'success');
+        } catch (error) {
+            console.error('録画開始に失敗しました:', error);
+            this.showNotification('録画開始に失敗しました', 'error');
+        }
+    }
+
+    // 動画録画停止
+    stopRecording() {
+        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+            this.mediaRecorder.stop();
+            this.stopRecordingTimer();
+            
+            // UI更新
+            document.getElementById('recording-indicator').style.display = 'none';
+            this.updateCameraButtons();
+            
+            this.showNotification('録画を停止しました', 'info');
+        }
+    }
+
+    // 録画時間タイマー
+    startRecordingTimer() {
+        this.recordingTimer = setInterval(() => {
+            const elapsed = Date.now() - this.recordingStartTime;
+            const minutes = Math.floor(elapsed / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('recording-time').textContent = timeString;
+        }, 1000);
+    }
+
+    // 録画タイマー停止
+    stopRecordingTimer() {
+        if (this.recordingTimer) {
+            clearInterval(this.recordingTimer);
+            this.recordingTimer = null;
+        }
+        document.getElementById('recording-time').textContent = '00:00';
+    }
+
+    // 動画からフレーム取得
+    captureFrameFromVideo() {
+        if (!this.mediaRecorder || this.mediaRecorder.state !== 'recording') {
+            this.showNotification('録画中のみフレーム取得が可能です', 'error');
+            return;
+        }
+
+        const video = document.getElementById('camera-video');
+        const canvas = document.getElementById('camera-canvas');
+        const context = canvas.getContext('2d');
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+        
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        this.displayCapturedImage(imageData);
+        
+        this.showNotification('フレームを取得しました', 'success');
+    }
+
+    // 録画済み動画表示
+    showRecordedVideo(videoUrl) {
+        const capturedSection = document.getElementById('captured-image-section');
+        const capturedImage = document.getElementById('captured-image');
+        
+        // 動画要素を作成
+        const videoElement = document.createElement('video');
+        videoElement.src = videoUrl;
+        videoElement.controls = true;
+        videoElement.style.width = '100%';
+        videoElement.style.borderRadius = 'var(--border-radius)';
+        videoElement.style.boxShadow = 'var(--shadow)';
+        
+        // 既存の画像要素を動画要素に置き換え
+        capturedImage.style.display = 'none';
+        capturedImage.parentNode.insertBefore(videoElement, capturedImage);
+        
+        capturedSection.style.display = 'block';
+        
+        // 解析結果をリセット
+        document.getElementById('analysis-results').style.display = 'none';
+        
+        // 動画から最初のフレームを画像として抽出
+        videoElement.addEventListener('loadeddata', () => {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            context.drawImage(videoElement, 0, 0);
+            
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            capturedImage.src = imageData;
+        });
     }
 
     // ファイルアップロード処理
     handleFileUpload(event) {
         const file = event.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                this.displayCapturedImage(e.target.result);
-            };
-            reader.readAsDataURL(file);
+            if (file.type.startsWith('image/')) {
+                // 画像ファイルの処理
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.displayCapturedImage(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            } else if (file.type.startsWith('video/')) {
+                // 動画ファイルの処理
+                const url = URL.createObjectURL(file);
+                this.showRecordedVideo(url);
+                this.showNotification('動画ファイルをアップロードしました', 'success');
+            } else {
+                this.showNotification('画像または動画ファイルを選択してください', 'error');
+            }
         }
     }
 

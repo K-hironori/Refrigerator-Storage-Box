@@ -117,19 +117,60 @@
                         </div>
                     </div>
                     
+                    <div class="camera-mode-selector">
+                        <div class="mode-tabs">
+                            <button class="mode-tab active" data-mode="photo">
+                                <i class="fas fa-camera"></i>
+                                写真
+                            </button>
+                            <button class="mode-tab" data-mode="video">
+                                <i class="fas fa-video"></i>
+                                動画
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div class="camera-controls">
                         <button id="start-camera" class="btn btn-primary">
                             <i class="fas fa-camera"></i>
                             カメラを開始
                         </button>
-                        <button id="capture-photo" class="btn btn-success" disabled>
-                            <i class="fas fa-camera-retro"></i>
-                            撮影
-                        </button>
+                        
+                        <!-- 写真モード用ボタン -->
+                        <div id="photo-controls" class="control-group">
+                            <button id="capture-photo" class="btn btn-success" disabled>
+                                <i class="fas fa-camera-retro"></i>
+                                撮影
+                            </button>
+                        </div>
+                        
+                        <!-- 動画モード用ボタン -->
+                        <div id="video-controls" class="control-group" style="display: none;">
+                            <button id="start-recording" class="btn btn-danger" disabled>
+                                <i class="fas fa-circle"></i>
+                                録画開始
+                            </button>
+                            <button id="stop-recording" class="btn btn-warning" disabled style="display: none;">
+                                <i class="fas fa-stop"></i>
+                                録画停止
+                            </button>
+                            <button id="capture-frame" class="btn btn-success" disabled style="display: none;">
+                                <i class="fas fa-camera"></i>
+                                フレーム取得
+                            </button>
+                        </div>
+                        
                         <button id="stop-camera" class="btn btn-secondary" disabled>
-                            <i class="fas fa-stop"></i>
+                            <i class="fas fa-times"></i>
                             停止
                         </button>
+                    </div>
+                    
+                    <!-- 録画状態表示 -->
+                    <div id="recording-indicator" class="recording-indicator" style="display: none;">
+                        <div class="recording-dot"></div>
+                        <span>録画中</span>
+                        <span id="recording-time">00:00</span>
                     </div>
 
                     <!-- ファイルアップロード -->
@@ -139,7 +180,7 @@
                             <i class="fas fa-upload"></i>
                             ファイルを選択
                         </label>
-                        <input type="file" id="receipt-file" accept="image/*" capture="environment" aria-label="レシート画像をファイルから選択">
+                        <input type="file" id="receipt-file" accept="image/*,video/*" capture="environment" aria-label="レシート画像・動画をファイルから選択">
                     </div>
                 </div>
 
